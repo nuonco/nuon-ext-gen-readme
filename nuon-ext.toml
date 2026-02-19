@@ -1,0 +1,7 @@
+[extension]
+name = "gen-readme"
+description = "Generate markdown documentation from Nuon app configuration files"
+
+[extension.auth]
+requires_token = false
+requires_org = false
