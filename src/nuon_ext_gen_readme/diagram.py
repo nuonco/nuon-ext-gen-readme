@@ -15,12 +15,14 @@ def get_dependencies(content: str) -> set[str]:
 
 
 @click.command("component-diagram")
-def generate_diagram():
+@click.pass_context
+def generate_diagram(ctx):
     """Generate a Mermaid dependency diagram of components.
 
-    Searches for a components/ directory in the current directory.
+    Searches for a components/ directory in the app config directory.
     """
-    components_path = Path("components")
+    root = Path(ctx.obj["app_dir"])
+    components_path = root / "components"
 
     if not components_path.is_dir():
         click.echo("No components/ directory found.", err=True)

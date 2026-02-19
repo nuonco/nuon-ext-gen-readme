@@ -35,13 +35,13 @@ def _load_inputs_from_dir(inputs_dir: Path) -> list[dict]:
     return inputs
 
 
-def _discover_inputs() -> tuple[list[dict], str]:
-    """Discover inputs from the current directory.
+def _discover_inputs(root: Path) -> tuple[list[dict], str]:
+    """Discover inputs from the given root directory.
 
     Returns a tuple of (inputs, source_description).
     """
-    inputs_dir = Path("inputs")
-    inputs_file = Path("inputs.toml")
+    inputs_dir = root / "inputs"
+    inputs_file = root / "inputs.toml"
 
     if inputs_dir.is_dir():
         return _load_inputs_from_dir(inputs_dir), "inputs/"
@@ -60,12 +60,14 @@ def _discover_inputs() -> tuple[list[dict], str]:
 
 
 @click.command("inputs-table")
-def inputs_table():
+@click.pass_context
+def inputs_table(ctx):
     """Generate a markdown table from inputs configuration.
 
     Searches for an inputs/ directory first, then falls back to inputs.toml.
     """
-    inputs, _source = _discover_inputs()
+    root = Path(ctx.obj["app_dir"])
+    inputs, _source = _discover_inputs(root)
 
     if not inputs:
         click.echo("No inputs found.", err=True)

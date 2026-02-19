@@ -44,13 +44,13 @@ def _extract_secret(data: dict) -> dict:
     }
 
 
-def _discover_secrets() -> tuple[list[dict], str]:
-    """Discover secrets from the current directory.
+def _discover_secrets(root: Path) -> tuple[list[dict], str]:
+    """Discover secrets from the given root directory.
 
     Returns a tuple of (secrets, source_description).
     """
-    secrets_dir = Path("secrets")
-    secrets_file = Path("secrets.toml")
+    secrets_dir = root / "secrets"
+    secrets_file = root / "secrets.toml"
 
     if secrets_dir.is_dir():
         return _load_secrets_from_dir(secrets_dir), "secrets/"
@@ -69,12 +69,14 @@ def _discover_secrets() -> tuple[list[dict], str]:
 
 
 @click.command("secrets-table")
-def secrets_table():
+@click.pass_context
+def secrets_table(ctx):
     """Generate a markdown table from secrets configuration.
 
     Searches for a secrets/ directory first, then falls back to secrets.toml.
     """
-    secrets, _source = _discover_secrets()
+    root = Path(ctx.obj["app_dir"])
+    secrets, _source = _discover_secrets(root)
 
     if not secrets:
         click.echo("No secrets found.", err=True)
