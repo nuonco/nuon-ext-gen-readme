@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import click
 
 from nuon_ext_gen_readme.inputs import inputs_table
@@ -17,7 +19,7 @@ from nuon_ext_gen_readme.diagram import generate_diagram
 def main(ctx, app_dir):
     """Generate markdown documentation from Nuon app configuration files."""
     ctx.ensure_object(dict)
-    ctx.obj["app_dir"] = app_dir
+    ctx.obj["app_dir"] = str(Path.cwd() / app_dir)
 
 
 main.add_command(inputs_table)
