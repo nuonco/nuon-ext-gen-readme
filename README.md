@@ -28,7 +28,10 @@ nuon ext install nuonco/nuon-ext-gen-readme
 
 ## Usage
 
-Run commands from your Nuon app directory, or pass `--app-dir` to point at one:
+Run commands from your Nuon app directory. If `--app-dir` is omitted, the command now uses the directory you invoked it
+from.
+
+You can still pass `--app-dir` to point at a different app config:
 
 ```
 nuon gen-readme --app-dir /path/to/app <command>
@@ -36,7 +39,7 @@ nuon gen-readme --app-dir /path/to/app <command>
 
 ### `inputs-table`
 
-Generate a markdown table of inputs. Looks for an `inputs/` directory first, then falls back to `inputs.toml`.
+Generate a markdown table of inputs. Supports `inputs.toml`, `inputs/`, and `input_groups/` (including mixed layouts).
 
 ```
 nuon gen-readme inputs-table
@@ -44,7 +47,7 @@ nuon gen-readme inputs-table
 
 ### `secrets-table`
 
-Generate a markdown table of secrets. Looks for a `secrets/` directory first, then falls back to `secrets.toml`.
+Generate a markdown table of secrets. Supports `secrets.toml`, `secrets/`, and mixed layouts.
 
 ```
 nuon gen-readme secrets-table
