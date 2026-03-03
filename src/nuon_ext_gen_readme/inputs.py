@@ -1,73 +1,114 @@
-"""Generate a markdown table of inputs from an inputs directory or inputs.toml file."""
+"""Generate a markdown table of inputs from Nuon app input definitions."""
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 import tomli
-from rich.console import Console
+
+
+def _read_toml(path: Path) -> dict[str, Any]:
+    with open(path, "rb") as f:
+        return tomli.load(f)
 
 
 def _load_inputs_from_file(path: Path) -> list[dict]:
     """Load inputs from a single inputs.toml file."""
-    with open(path, "rb") as f:
-        data = tomli.load(f)
+    data = _read_toml(path)
     return data.get("input", [])
+
+
+def _load_groups_from_file(path: Path) -> dict[str, dict]:
+    """Load input groups from a single inputs.toml file."""
+    data = _read_toml(path)
+    groups: dict[str, dict] = {}
+    for group in data.get("group", []):
+        name = group.get("name")
+        if name:
+            groups[name] = group
+    return groups
 
 
 def _load_inputs_from_dir(inputs_dir: Path) -> list[dict]:
     """Load inputs from a directory of TOML files."""
-    toml_files = sorted(inputs_dir.rglob("*.toml"))
-    if not toml_files:
-        return []
-
-    inputs = []
-    for toml_file in toml_files:
-        with open(toml_file, "rb") as f:
-            data = tomli.load(f)
-        # Each file may define a single input or have an [[input]] array
+    inputs: list[dict] = []
+    for toml_file in sorted(inputs_dir.rglob("*.toml")):
+        data = _read_toml(toml_file)
         if "input" in data:
             inputs.extend(data["input"])
-        else:
-            # Treat the file itself as a single input definition
-            if "name" in data:
-                inputs.append(data)
+            continue
+
+        if "name" in data:
+            inputs.append(data)
     return inputs
 
 
-def _discover_inputs(root: Path) -> tuple[list[dict], str]:
-    """Discover inputs from the given root directory.
+def _load_groups_from_dir(groups_dir: Path) -> dict[str, dict]:
+    """Load input groups from input_groups/ TOML files."""
+    groups: dict[str, dict] = {}
+    for toml_file in sorted(groups_dir.rglob("*.toml")):
+        data = _read_toml(toml_file)
+        if "group" in data:
+            for group in data["group"]:
+                name = group.get("name")
+                if name:
+                    groups[name] = group
+            continue
 
-    Returns a tuple of (inputs, source_description).
-    """
+        name = data.get("name")
+        if name:
+            groups[name] = data
+    return groups
+
+
+def _dedupe_inputs(inputs: list[dict]) -> list[dict]:
+    """Deduplicate inputs by name, preserving later definitions as overrides."""
+    deduped: dict[str, dict] = {}
+    for item in inputs:
+        name = item.get("name")
+        if not name:
+            continue
+        deduped[name] = item
+    return list(deduped.values())
+
+
+def _discover_inputs(root: Path) -> tuple[list[dict], dict[str, dict], str]:
+    """Discover inputs and groups from supported app configuration layouts."""
     inputs_dir = root / "inputs"
     inputs_file = root / "inputs.toml"
+    groups_dir = root / "input_groups"
 
-    if inputs_dir.is_dir():
-        return _load_inputs_from_dir(inputs_dir), "inputs/"
-
-    stderr = Console(stderr=True)
+    inputs: list[dict] = []
+    groups: dict[str, dict] = {}
+    sources: list[str] = []
 
     if inputs_file.is_file():
-        stderr.print(
-            "[yellow]Warning: Using inputs.toml — consider migrating to an inputs/ "
-            "directory with one file per input for better organization.[/yellow]"
-        )
-        return _load_inputs_from_file(inputs_file), "inputs.toml"
+        inputs.extend(_load_inputs_from_file(inputs_file))
+        groups.update(_load_groups_from_file(inputs_file))
+        sources.append("inputs.toml")
 
-    stderr.print("[red]No inputs/ directory or inputs.toml file found.[/red]")
-    sys.exit(1)
+    if inputs_dir.is_dir():
+        inputs.extend(_load_inputs_from_dir(inputs_dir))
+        sources.append("inputs/")
+
+    if groups_dir.is_dir():
+        groups.update(_load_groups_from_dir(groups_dir))
+        sources.append("input_groups/")
+
+    if not inputs:
+        click.echo("No inputs/ directory or inputs.toml file found.", err=True)
+        sys.exit(1)
+
+    return _dedupe_inputs(inputs), groups, ", ".join(sources)
 
 
 @click.command("inputs-table")
 @click.pass_context
 def inputs_table(ctx):
-    """Generate a markdown table from inputs configuration.
-
-    Searches for an inputs/ directory first, then falls back to inputs.toml.
-    """
+    """Generate a markdown table from inputs configuration."""
     root = Path(ctx.obj["app_dir"])
-    inputs, _source = _discover_inputs(root)
+    inputs, groups, _source = _discover_inputs(root)
 
     if not inputs:
         click.echo("No inputs found.", err=True)
@@ -75,14 +116,15 @@ def inputs_table(ctx):
 
     click.echo("| Name | Display Name | Description | Group | Type | Default |")
     click.echo("| --- | --- | --- | --- | --- | --- |")
-    for i in sorted(inputs, key=lambda x: (x.get("group", ""), x.get("name", ""))):
-        name = i.get("name", "")
-        display_name = i.get("display_name", "")
-        description = i.get("description", "")
-        group = i.get("group", "")
-        input_type = i.get("type", "string")
-        default = i.get("default", "")
+    for item in sorted(inputs, key=lambda x: (x.get("group", ""), x.get("name", ""))):
+        name = item.get("name", "")
+        display_name = item.get("display_name", "")
+        description = item.get("description", "")
+        group = item.get("group", "")
+        group_display = groups.get(group, {}).get("display_name", group)
+        input_type = item.get("type", "string")
+        default = item.get("default", "")
         default_display = f"`{default}`" if default else "_none_"
         click.echo(
-            f"| `{name}` | {display_name} | {description} | {group} | {input_type} | {default_display} |"
+            f"| `{name}` | {display_name} | {description} | {group_display} | {input_type} | {default_display} |"
         )

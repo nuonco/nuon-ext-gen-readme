@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import click
@@ -11,15 +12,28 @@ from nuon_ext_gen_readme.diagram import generate_diagram
 @click.version_option(package_name="nuon-ext-gen-readme")
 @click.option(
     "--app-dir",
-    type=click.Path(exists=True, file_okay=False),
-    default=".",
+    type=click.Path(file_okay=False),
+    default=None,
     help="Path to the Nuon app configuration directory.",
 )
 @click.pass_context
 def main(ctx, app_dir):
     """Generate markdown documentation from Nuon app configuration files."""
+    invocation_dir = Path(os.environ.get("PWD", str(Path.cwd())))
+
+    app_path = invocation_dir if app_dir is None else Path(app_dir)
+    if not app_path.is_absolute():
+        app_path = invocation_dir / app_path
+    app_path = app_path.resolve()
+
+    if not app_path.exists() or not app_path.is_dir():
+        raise click.BadParameter(
+            f"App directory does not exist or is not a directory: {app_path}",
+            param_hint="--app-dir",
+        )
+
     ctx.ensure_object(dict)
-    ctx.obj["app_dir"] = str(Path.cwd() / app_dir)
+    ctx.obj["app_dir"] = str(app_path)
 
 
 main.add_command(inputs_table)
