@@ -18,6 +18,7 @@ def _extract_secret(data: dict) -> dict:
         "name": data.get("name", ""),
         "display_name": data.get("display_name", ""),
         "description": data.get("description", ""),
+        "required": data.get("required", False),
         "k8s_sync": data.get("kubernetes_sync", False),
         "k8s_namespace": data.get("kubernetes_secret_namespace", ""),
         "k8s_secret": data.get("kubernetes_secret_name", ""),
@@ -89,10 +90,10 @@ def secrets_table(ctx):
         sys.exit(1)
 
     click.echo(
-        "| Name | Display Name | Description | K8s Sync | K8s Namespace | K8s Secret |"
+        "| Name | Display Name | Description | Required | K8s Sync | K8s Namespace | K8s Secret |"
     )
-    click.echo("| --- | --- | --- | --- | --- | --- |")
+    click.echo("| --- | --- | --- | --- | --- | --- | --- |")
     for secret in sorted(secrets, key=lambda x: x["name"]):
         click.echo(
-            f"| `{secret['name']}` | {secret['display_name']} | {secret['description']} | {secret['k8s_sync']} | `{secret['k8s_namespace']}` | `{secret['k8s_secret']}` |"
+            f"| `{secret['name']}` | {secret['display_name']} | {secret['description']} | {secret['required']} | {secret['k8s_sync']} | `{secret['k8s_namespace']}` | `{secret['k8s_secret']}` |"
         )
