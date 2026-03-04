@@ -14,6 +14,21 @@ def get_dependencies(content: str) -> set[str]:
     return set(re.findall(pattern, content))
 
 
+def parse_dependency_file(
+    component_name: str, component_file: Path, contents_path: str, source_name: str
+) -> set[str]:
+    """Parse a referenced file and extract component dependency references."""
+    full_path = component_file.parent / contents_path
+    if full_path.exists():
+        return get_dependencies(full_path.read_text())
+
+    click.echo(
+        f"Warning: {source_name} {full_path} not found for component {component_name}",
+        err=True,
+    )
+    return set()
+
+
 @click.command("component-diagram")
 @click.pass_context
 def generate_diagram(ctx):
@@ -51,6 +66,11 @@ def generate_diagram(ctx):
                 "deps": set(),
             }
 
+            # Check explicit depends_on declarations.
+            depends_on = data.get("depends_on", [])
+            if isinstance(depends_on, list):
+                components[name]["deps"].update(dep for dep in depends_on if isinstance(dep, str))
+
             # Check [vars] block
             vars_block = data.get("vars", {})
             for key, value in vars_block.items():
@@ -62,14 +82,20 @@ def generate_diagram(ctx):
             for vf in var_files:
                 contents_path = vf.get("contents")
                 if contents_path:
-                    full_path = file_path.parent / contents_path
-                    if full_path.exists():
-                        file_content = full_path.read_text()
-                        components[name]["deps"].update(get_dependencies(file_content))
-                    else:
-                        click.echo(
-                            f"Warning: var_file {full_path} not found for component {name}",
-                            err=True,
+                    components[name]["deps"].update(
+                        parse_dependency_file(name, file_path, contents_path, "var_file")
+                    )
+
+            # Helm components can also reference dependencies in [[values_file]] templates.
+            if comp_type in {"helm_component", "helm_chart"}:
+                values_files = data.get("values_file", [])
+                for vf in values_files:
+                    contents_path = vf.get("contents")
+                    if contents_path:
+                        components[name]["deps"].update(
+                            parse_dependency_file(
+                                name, file_path, contents_path, "values_file"
+                            )
                         )
 
         except Exception as e:
