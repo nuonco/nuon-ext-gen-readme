@@ -1,6 +1,5 @@
 """Generate a markdown table of inputs from Nuon app input definitions."""
 
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -97,25 +96,23 @@ def _discover_inputs(root: Path) -> tuple[list[dict], dict[str, dict], str]:
         sources.append("input_groups/")
 
     if not inputs:
-        click.echo("No inputs/ directory or inputs.toml file found.", err=True)
-        sys.exit(1)
+        raise click.ClickException("No inputs/ directory or inputs.toml file found.")
 
     return _dedupe_inputs(inputs), groups, ", ".join(sources)
 
 
-@click.command("inputs-table")
-@click.pass_context
-def inputs_table(ctx):
-    """Generate a markdown table from inputs configuration."""
-    root = Path(ctx.obj["app_dir"])
+def build_inputs_table(root: Path) -> str:
+    """Build the markdown table from inputs configuration."""
     inputs, groups, _source = _discover_inputs(root)
 
     if not inputs:
-        click.echo("No inputs found.", err=True)
-        sys.exit(1)
+        raise click.ClickException("No inputs found.")
 
-    click.echo("| Name | Display Name | Description | Group | Type | Default |")
-    click.echo("| --- | --- | --- | --- | --- | --- |")
+    lines = [
+        "| Name | Display Name | Description | Group | Type | Default |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+
     for item in sorted(inputs, key=lambda x: (x.get("group", ""), x.get("name", ""))):
         name = item.get("name", "")
         display_name = item.get("display_name", "")
@@ -125,6 +122,16 @@ def inputs_table(ctx):
         input_type = item.get("type", "string")
         default = item.get("default", "")
         default_display = f"`{default}`" if default else "_none_"
-        click.echo(
+        lines.append(
             f"| `{name}` | {display_name} | {description} | {group_display} | {input_type} | {default_display} |"
         )
+
+    return "\n".join(lines)
+
+
+@click.command("inputs-table")
+@click.pass_context
+def inputs_table(ctx):
+    """Generate a markdown table from inputs configuration."""
+    root = Path(ctx.obj["app_dir"])
+    click.echo(build_inputs_table(root))

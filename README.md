@@ -17,6 +17,7 @@ Options:
 Commands:
   component-diagram  Generate a Mermaid dependency diagram of components.
   inputs-table       Generate a markdown table from inputs configuration.
+  populate-readme    Populate README sections between Nuon docs markers.
   secrets-table      Generate a markdown table from secrets configuration.
 ```
 
@@ -59,6 +60,33 @@ Generate a Mermaid dependency diagram from component TOML files in `components/`
 
 ```
 nuon gen-readme component-diagram
+```
+
+### `populate-readme`
+
+Populate your README directly by replacing content between these marker pairs:
+
+```
+<!-- nuon-docs components-diagram-start -->
+<!-- nuon-docs components-diagram-end -->
+
+<!-- nuon-docs inputs-table-start -->
+<!-- nuon-docs inputs-table-end -->
+
+<!-- nuon-docs secrets-table-start -->
+<!-- nuon-docs secrets-table-end -->
+```
+
+Run it in your app directory:
+
+```
+nuon gen-readme populate-readme
+```
+
+Or target a different README path:
+
+```
+nuon gen-readme populate-readme --readme-path docs/README.md
 ```
 
 Pipe any command to the clipboard:

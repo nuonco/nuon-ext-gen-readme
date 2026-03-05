@@ -1,7 +1,6 @@
 """Generate a Mermaid dependency diagram from Nuon component TOML files."""
 
 import re
-import sys
 from pathlib import Path
 
 import click
@@ -29,24 +28,16 @@ def parse_dependency_file(
     return set()
 
 
-@click.command("component-diagram")
-@click.pass_context
-def generate_diagram(ctx):
-    """Generate a Mermaid dependency diagram of components.
-
-    Searches for a components/ directory in the app config directory.
-    """
-    root = Path(ctx.obj["app_dir"])
+def build_component_diagram(root: Path) -> str:
+    """Build a Mermaid dependency diagram of components."""
     components_path = root / "components"
 
     if not components_path.is_dir():
-        click.echo("No components/ directory found.", err=True)
-        sys.exit(1)
+        raise click.ClickException("No components/ directory found.")
     toml_files = sorted(components_path.glob("*.toml"))
 
     if not toml_files:
-        click.echo("No TOML files found in components/", err=True)
-        sys.exit(1)
+        raise click.ClickException("No TOML files found in components/")
 
     components: dict[str, dict] = {}
 
@@ -101,32 +92,42 @@ def generate_diagram(ctx):
         except Exception as e:
             click.echo(f"Error parsing {file_path}: {e}", err=True)
 
-    # Generate Mermaid chart
-    click.echo("```mermaid")
-    click.echo("graph TD")
+    lines = ["```mermaid", "graph TD"]
 
     for name, info in components.items():
         label = f"{name}<br/>{info['file']}"
-        click.echo(f'  {name}["{label}"]')
+        lines.append(f'  {name}["{label}"]')
 
-    click.echo()
+    lines.append("")
 
     for name, info in components.items():
         for dep in info["deps"]:
             if dep in components:
-                click.echo(f"  {dep} --> {name}")
+                lines.append(f"  {dep} --> {name}")
 
-    click.echo()
+    lines.append("")
 
     tf_components = [n for n, i in components.items() if i["type"] != "container_image"]
     img_components = [n for n, i in components.items() if i["type"] == "container_image"]
 
     if tf_components:
-        click.echo(f"  class {','.join(tf_components)} tfClass;")
+        lines.append(f"  class {','.join(tf_components)} tfClass;")
     if img_components:
-        click.echo(f"  class {','.join(img_components)} imgClass;")
+        lines.append(f"  class {','.join(img_components)} imgClass;")
 
-    click.echo()
-    click.echo("  classDef tfClass fill:#D6B0FC,stroke:#8040BF,color:#000;")
-    click.echo("  classDef imgClass fill:#FCA04A,stroke:#CC803A,color:#000;")
-    click.echo("```")
+    lines.append("")
+    lines.append("  classDef tfClass fill:#D6B0FC,stroke:#8040BF,color:#000;")
+    lines.append("  classDef imgClass fill:#FCA04A,stroke:#CC803A,color:#000;")
+    lines.append("```")
+    return "\n".join(lines)
+
+
+@click.command("component-diagram")
+@click.pass_context
+def generate_diagram(ctx):
+    """Generate a Mermaid dependency diagram of components.
+
+    Searches for a components/ directory in the app config directory.
+    """
+    root = Path(ctx.obj["app_dir"])
+    click.echo(build_component_diagram(root))

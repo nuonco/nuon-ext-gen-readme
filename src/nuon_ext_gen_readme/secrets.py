@@ -1,6 +1,5 @@
 """Generate a markdown table of secrets from Nuon app secret definitions."""
 
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -72,10 +71,28 @@ def _discover_secrets(root: Path) -> tuple[list[dict], str]:
         sources.append("secrets/")
 
     if not secrets:
-        click.echo("No secrets/ directory or secrets.toml file found.", err=True)
-        sys.exit(1)
+        raise click.ClickException("No secrets/ directory or secrets.toml file found.")
 
     return _dedupe_secrets(secrets), ", ".join(sources)
+
+
+def build_secrets_table(root: Path) -> str:
+    """Build the markdown table from secrets configuration."""
+    secrets, _source = _discover_secrets(root)
+
+    if not secrets:
+        raise click.ClickException("No secrets found.")
+
+    lines = [
+        "| Name | Display Name | Description | Required | K8s Sync | K8s Namespace | K8s Secret |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for secret in sorted(secrets, key=lambda x: x["name"]):
+        lines.append(
+            f"| `{secret['name']}` | {secret['display_name']} | {secret['description']} | {secret['required']} | {secret['k8s_sync']} | `{secret['k8s_namespace']}` | `{secret['k8s_secret']}` |"
+        )
+
+    return "\n".join(lines)
 
 
 @click.command("secrets-table")
@@ -83,17 +100,4 @@ def _discover_secrets(root: Path) -> tuple[list[dict], str]:
 def secrets_table(ctx):
     """Generate a markdown table from secrets configuration."""
     root = Path(ctx.obj["app_dir"])
-    secrets, _source = _discover_secrets(root)
-
-    if not secrets:
-        click.echo("No secrets found.", err=True)
-        sys.exit(1)
-
-    click.echo(
-        "| Name | Display Name | Description | Required | K8s Sync | K8s Namespace | K8s Secret |"
-    )
-    click.echo("| --- | --- | --- | --- | --- | --- | --- |")
-    for secret in sorted(secrets, key=lambda x: x["name"]):
-        click.echo(
-            f"| `{secret['name']}` | {secret['display_name']} | {secret['description']} | {secret['required']} | {secret['k8s_sync']} | `{secret['k8s_namespace']}` | `{secret['k8s_secret']}` |"
-        )
+    click.echo(build_secrets_table(root))
