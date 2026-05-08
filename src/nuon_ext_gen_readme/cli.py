@@ -65,7 +65,7 @@ def main(ctx, app_dir):
     ctx.obj["app_dir"] = str(app_path)
 
 
-@click.command("populate-readme")
+@click.command("populate")
 @click.option(
     "--readme-path",
     type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
@@ -73,8 +73,14 @@ def main(ctx, app_dir):
     show_default=True,
     help="Path to README file to update. Relative paths are resolved from --app-dir.",
 )
+@click.option(
+    "--mermaid",
+    is_flag=True,
+    default=False,
+    help="Render the components diagram as Mermaid instead of the native <nuon-config-graph> tag.",
+)
 @click.pass_context
-def populate_readme(ctx, readme_path: Path):
+def populate_readme(ctx, readme_path: Path, mermaid: bool):
     """Populate README sections between Nuon docs markers."""
     app_root = Path(ctx.obj["app_dir"])
     resolved_readme = readme_path if readme_path.is_absolute() else app_root / readme_path
@@ -87,7 +93,7 @@ def populate_readme(ctx, readme_path: Path):
 
     readme_contents = resolved_readme.read_text()
     rendered_sections = {
-        "components-diagram": build_component_diagram(app_root),
+        "components-diagram": build_component_diagram(app_root, mermaid=mermaid),
         "inputs-table": build_inputs_table(app_root),
         "secrets-table": build_secrets_table(app_root),
     }

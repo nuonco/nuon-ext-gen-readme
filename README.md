@@ -15,9 +15,9 @@ Options:
   --help               Show this message and exit.
 
 Commands:
-  component-diagram  Generate a Mermaid dependency diagram of components.
+  component-diagram  Generate a dependency diagram of components.
   inputs-table       Generate a markdown table from inputs configuration.
-  populate-readme    Populate README sections between Nuon docs markers.
+  populate    Populate README sections between Nuon docs markers.
   secrets-table      Generate a markdown table from secrets configuration.
 ```
 
@@ -56,13 +56,20 @@ nuon gen-readme secrets-table
 
 ### `component-diagram`
 
-Generate a Mermaid dependency diagram from component TOML files in `components/`.
+Emit the native `<nuon-config-graph></nuon-config-graph>` tag, which renders the component dependency graph in Nuon-aware
+viewers.
 
 ```
 nuon gen-readme component-diagram
 ```
 
-### `populate-readme`
+Pass `--mermaid` to render a Mermaid dependency diagram from the component TOML files in `components/` instead:
+
+```
+nuon gen-readme component-diagram --mermaid
+```
+
+### `populate`
 
 Populate your README directly by replacing content between these marker pairs:
 
@@ -80,13 +87,19 @@ Populate your README directly by replacing content between these marker pairs:
 Run it in your app directory:
 
 ```
-nuon gen-readme populate-readme
+nuon gen-readme populate
 ```
 
 Or target a different README path:
 
 ```
-nuon gen-readme populate-readme --readme-path docs/README.md
+nuon gen-readme populate --readme-path docs/README.md
+```
+
+To populate the components diagram with a Mermaid graph instead of the native `<nuon-config-graph>` tag:
+
+```
+nuon gen-readme populate --mermaid
 ```
 
 Pipe any command to the clipboard:

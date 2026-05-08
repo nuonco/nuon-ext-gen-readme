@@ -1,10 +1,12 @@
-"""Generate a Mermaid dependency diagram from Nuon component TOML files."""
+"""Generate a dependency diagram from Nuon component TOML files."""
 
 import re
 from pathlib import Path
 
 import click
 import tomli
+
+NUON_CONFIG_GRAPH_TAG = "<nuon-config-graph></nuon-config-graph>"
 
 
 def get_dependencies(content: str) -> set[str]:
@@ -28,8 +30,15 @@ def parse_dependency_file(
     return set()
 
 
-def build_component_diagram(root: Path) -> str:
-    """Build a Mermaid dependency diagram of components."""
+def build_component_diagram(root: Path, mermaid: bool = False) -> str:
+    """Build a dependency diagram of components.
+
+    Defaults to the native ``<nuon-config-graph></nuon-config-graph>`` tag.
+    Pass ``mermaid=True`` to render a Mermaid graph instead.
+    """
+    if not mermaid:
+        return NUON_CONFIG_GRAPH_TAG
+
     components_path = root / "components"
 
     if not components_path.is_dir():
@@ -123,11 +132,18 @@ def build_component_diagram(root: Path) -> str:
 
 
 @click.command("component-diagram")
+@click.option(
+    "--mermaid",
+    is_flag=True,
+    default=False,
+    help="Render a Mermaid graph instead of the native <nuon-config-graph> tag.",
+)
 @click.pass_context
-def generate_diagram(ctx):
-    """Generate a Mermaid dependency diagram of components.
+def generate_diagram(ctx, mermaid: bool):
+    """Generate a dependency diagram of components.
 
-    Searches for a components/ directory in the app config directory.
+    Defaults to emitting ``<nuon-config-graph></nuon-config-graph>``. Pass
+    ``--mermaid`` to render a Mermaid diagram from the components/ directory.
     """
     root = Path(ctx.obj["app_dir"])
-    click.echo(build_component_diagram(root))
+    click.echo(build_component_diagram(root, mermaid=mermaid))
