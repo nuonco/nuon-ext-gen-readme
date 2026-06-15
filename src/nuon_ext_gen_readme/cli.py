@@ -7,6 +7,7 @@ from nuon_ext_gen_readme.diagram import build_component_diagram, generate_diagra
 from nuon_ext_gen_readme.inputs import build_inputs_table, inputs_table
 from nuon_ext_gen_readme.secrets import build_secrets_table, secrets_table
 
+
 SECTION_MARKERS = {
     "components-diagram": (
         "<!-- nuon-docs components-diagram-start -->",
@@ -21,6 +22,32 @@ SECTION_MARKERS = {
         "<!-- nuon-docs secrets-table-end -->",
     ),
 }
+
+
+def _build_readme(app_root: Path, name: str, mermaid: bool) -> str:
+    sections: list[str] = [f"# {name}\n"]
+
+    sections.append("## Description\n\n_Add a description of this app configuration here._\n")
+
+    try:
+        inputs = build_inputs_table(app_root)
+        start, end = SECTION_MARKERS["inputs-table"]
+        sections.append(f"## Inputs\n\n{start}\n{inputs}\n{end}\n")
+    except click.ClickException:
+        pass
+
+    try:
+        secrets = build_secrets_table(app_root)
+        start, end = SECTION_MARKERS["secrets-table"]
+        sections.append(f"## Secrets\n\n{start}\n{secrets}\n{end}\n")
+    except click.ClickException:
+        pass
+
+    diagram = build_component_diagram(app_root, mermaid=mermaid)
+    start, end = SECTION_MARKERS["components-diagram"]
+    sections.append(f"## Components\n\n{start}\n{diagram}\n{end}\n")
+
+    return "\n".join(sections)
 
 
 def _replace_between_markers(content: str, start_marker: str, end_marker: str, block: str) -> str:
@@ -109,7 +136,50 @@ def populate_readme(ctx, readme_path: Path, mermaid: bool):
     click.echo(f"Updated README sections in {resolved_readme}")
 
 
+@click.command("create-readme")
+@click.option(
+    "--name",
+    default=None,
+    help="App name for the README title. Defaults to the app directory name.",
+)
+@click.option(
+    "--readme-path",
+    type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
+    default=Path("README.md"),
+    show_default=True,
+    help="Output path for the README. Relative paths are resolved from --app-dir.",
+)
+@click.option(
+    "--mermaid",
+    is_flag=True,
+    default=False,
+    help="Render the components diagram as Mermaid instead of the native <nuon-config-graph> tag.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Overwrite an existing README file.",
+)
+@click.pass_context
+def create_readme(ctx, name: str | None, readme_path: Path, mermaid: bool, force: bool):
+    """Create a new README populated with available Nuon app configuration sections."""
+    app_root = Path(ctx.obj["app_dir"])
+    resolved_readme = readme_path if readme_path.is_absolute() else app_root / readme_path
+
+    if resolved_readme.exists() and not force:
+        raise click.ClickException(
+            f"{resolved_readme} already exists. Use --force to overwrite."
+        )
+
+    app_name = name or app_root.name
+    content = _build_readme(app_root, app_name, mermaid)
+    resolved_readme.write_text(content)
+    click.echo(f"Created {resolved_readme}")
+
+
 main.add_command(inputs_table)
 main.add_command(secrets_table)
 main.add_command(generate_diagram)
 main.add_command(populate_readme)
+main.add_command(create_readme)
