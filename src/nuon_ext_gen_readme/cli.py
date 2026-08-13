@@ -3,6 +3,10 @@ from pathlib import Path
 
 import click
 
+from nuon_ext_gen_readme.app_branches import (
+    app_branches_diagram,
+    build_app_branches_diagram,
+)
 from nuon_ext_gen_readme.diagram import build_component_diagram, generate_diagram
 from nuon_ext_gen_readme.inputs import build_inputs_table, inputs_table
 from nuon_ext_gen_readme.secrets import build_secrets_table, secrets_table
@@ -20,6 +24,10 @@ SECTION_MARKERS = {
     "secrets-table": (
         "<!-- nuon-docs secrets-table-start -->",
         "<!-- nuon-docs secrets-table-end -->",
+    ),
+    "app-branches-diagram": (
+        "<!-- nuon-docs app-branches-diagram-start -->",
+        "<!-- nuon-docs app-branches-diagram-end -->",
     ),
 }
 
@@ -46,6 +54,13 @@ def _build_readme(app_root: Path, name: str, mermaid: bool) -> str:
     diagram = build_component_diagram(app_root, mermaid=mermaid)
     start, end = SECTION_MARKERS["components-diagram"]
     sections.append(f"## Components\n\n{start}\n{diagram}\n{end}\n")
+
+    try:
+        app_branches = build_app_branches_diagram(app_root)
+        start, end = SECTION_MARKERS["app-branches-diagram"]
+        sections.append(f"## App Branches\n\n{start}\n{app_branches}\n{end}\n")
+    except click.ClickException:
+        pass
 
     return "\n".join(sections)
 
@@ -125,9 +140,18 @@ def populate_readme(ctx, readme_path: Path, mermaid: bool):
         "secrets-table": build_secrets_table(app_root),
     }
 
+    # Only rendered when the app defines branches/, and only written when the
+    # README opts in with the markers, so existing READMEs keep working.
+    try:
+        rendered_sections["app-branches-diagram"] = build_app_branches_diagram(app_root)
+    except click.ClickException:
+        pass
+
     updated_contents = readme_contents
     for key, section in rendered_sections.items():
         start_marker, end_marker = SECTION_MARKERS[key]
+        if key == "app-branches-diagram" and start_marker not in readme_contents:
+            continue
         updated_contents = _replace_between_markers(
             updated_contents, start_marker, end_marker, section
         )
@@ -181,5 +205,6 @@ def create_readme(ctx, name: str | None, readme_path: Path, mermaid: bool, force
 main.add_command(inputs_table)
 main.add_command(secrets_table)
 main.add_command(generate_diagram)
+main.add_command(app_branches_diagram)
 main.add_command(populate_readme)
 main.add_command(create_readme)

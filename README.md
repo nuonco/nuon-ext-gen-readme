@@ -15,10 +15,13 @@ Options:
   --help               Show this message and exit.
 
 Commands:
-  component-diagram  Generate a dependency diagram of components.
-  inputs-table       Generate a markdown table from inputs configuration.
-  populate    Populate README sections between Nuon docs markers.
-  secrets-table      Generate a markdown table from secrets configuration.
+  app-branches-diagram  Generate a Mermaid diagram of app branches and their
+                        install groups.
+  component-diagram     Generate a dependency diagram of components.
+  create-readme         Create a new README populated with available sections.
+  inputs-table          Generate a markdown table from inputs configuration.
+  populate              Populate README sections between Nuon docs markers.
+  secrets-table         Generate a markdown table from secrets configuration.
 ```
 
 ## Installation
@@ -69,6 +72,56 @@ Pass `--mermaid` to render a Mermaid dependency diagram from the component TOML 
 nuon gen-readme component-diagram --mermaid
 ```
 
+### `app-branches-diagram`
+
+Render a Mermaid diagram of the app branches in `branches/`, showing each install group, its label selector, and the
+promotion order between groups.
+
+```
+nuon gen-readme app-branches-diagram
+```
+
+Given a `branches/main.toml` like this:
+
+```toml
+name = "main"
+
+[connected_repo]
+repo = "lovablelabs/lovable-enterprise"
+directory = "nuon/lovable-enterprise-aws"
+branch = "main"
+
+[[install_groups]]
+name = "canary"
+order = 1
+
+[install_groups.label_selector]
+canary = "true"
+auto-deploy = "true"
+
+[[install_groups]]
+name = "stable"
+order = 2
+
+[install_groups.label_selector]
+stable = "true"
+auto-deploy = "true"
+```
+
+it renders `canary` and `stable` as nodes, each listing its label selector, with a dashed `promote` edge between them.
+
+Limit the output to a single branch:
+
+```
+nuon gen-readme app-branches-diagram --branch main
+```
+
+Render from an app branch config API payload instead of `branches/` — pass a file path, or `-` for stdin:
+
+```
+nuon apps branches configs get <id> -o json | nuon gen-readme app-branches-diagram --from-json -
+```
+
 ### `populate`
 
 Populate your README directly by replacing content between these marker pairs:
@@ -82,7 +135,13 @@ Populate your README directly by replacing content between these marker pairs:
 
 <!-- nuon-docs secrets-table-start -->
 <!-- nuon-docs secrets-table-end -->
+
+<!-- nuon-docs app-branches-diagram-start -->
+<!-- nuon-docs app-branches-diagram-end -->
 ```
+
+The app-branches section is optional: it is only written when those markers are present and the app has a `branches/`
+directory, so existing READMEs are unaffected.
 
 Run it in your app directory:
 
