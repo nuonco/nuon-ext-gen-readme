@@ -57,6 +57,32 @@ Generate a markdown table of secrets. Supports `secrets.toml`, `secrets/`, and m
 nuon gen-readme secrets-table
 ```
 
+The `K8s Sync Targets` column renders each `kubernetes_sync_targets` entry as `namespaces → name:key`, with one line per
+target. In a `secrets.toml` the targets are nested under the secret:
+
+```toml
+[[secret]]
+name         = "rds_secret"
+display_name = "Database password"
+description  = "Database password"
+required     = true
+
+[[secret.kubernetes_sync_targets]]
+namespaces = ["workers", "control-plane"]
+name       = "storage"
+key        = "db-password"
+```
+
+In the `secrets/` layout, where each file defines one secret, they are declared at the top level as
+`[[kubernetes_sync_targets]]`.
+
+`K8s Sync` is true when either `kubernetes_sync = true` or at least one sync target is defined, matching how Nuon
+resolves sync. The legacy single-valued `kubernetes_secret_namespace` / `kubernetes_secret_name` fields still render in
+the same column when no targets are set.
+
+Apps are not required to define secrets: if there is no `secrets.toml` and no `secrets/` directory, the command prints a
+placeholder instead of failing, and `populate` and `create-readme` still write the section.
+
 ### `component-diagram`
 
 Emit the native `<nuon-config-graph></nuon-config-graph>` tag, which renders the component dependency graph in Nuon-aware

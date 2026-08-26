@@ -44,12 +44,11 @@ def _build_readme(app_root: Path, name: str, mermaid: bool) -> str:
     except click.ClickException:
         pass
 
-    try:
-        secrets = build_secrets_table(app_root)
-        start, end = SECTION_MARKERS["secrets-table"]
-        sections.append(f"## Secrets\n\n{start}\n{secrets}\n{end}\n")
-    except click.ClickException:
-        pass
+    # Always emitted, even for apps with no secrets, so the markers exist for a later
+    # `populate` run once secrets are added.
+    secrets = build_secrets_table(app_root)
+    start, end = SECTION_MARKERS["secrets-table"]
+    sections.append(f"## Secrets\n\n{start}\n{secrets}\n{end}\n")
 
     diagram = build_component_diagram(app_root, mermaid=mermaid)
     start, end = SECTION_MARKERS["components-diagram"]
