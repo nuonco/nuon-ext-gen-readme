@@ -133,24 +133,33 @@ def populate_readme(ctx, readme_path: Path, mermaid: bool):
         )
 
     readme_contents = resolved_readme.read_text()
-    rendered_sections = {
-        "components-diagram": build_component_diagram(app_root, mermaid=mermaid),
-        "inputs-table": build_inputs_table(app_root),
-        "secrets-table": build_secrets_table(app_root),
+    section_builders = {
+        "components-diagram": lambda: build_component_diagram(app_root, mermaid=mermaid),
+        "inputs-table": lambda: build_inputs_table(app_root),
+        "secrets-table": lambda: build_secrets_table(app_root),
+        "app-branches-diagram": lambda: build_app_branches_diagram(app_root),
     }
 
-    # Only rendered when the app defines branches/, and only written when the
-    # README opts in with the markers, so existing READMEs keep working.
-    try:
-        rendered_sections["app-branches-diagram"] = build_app_branches_diagram(app_root)
-    except click.ClickException:
-        pass
-
     updated_contents = readme_contents
-    for key, section in rendered_sections.items():
+    for key, build_section in section_builders.items():
         start_marker, end_marker = SECTION_MARKERS[key]
-        if key == "app-branches-diagram" and start_marker not in readme_contents:
+        has_start = start_marker in readme_contents
+        has_end = end_marker in readme_contents
+        if not has_start and not has_end:
             continue
+
+        if not has_start:
+            raise click.ClickException(f"Missing start marker: {start_marker}")
+        if not has_end:
+            raise click.ClickException(f"Missing end marker: {end_marker}")
+
+        try:
+            section = build_section()
+        except click.ClickException:
+            if key == "app-branches-diagram":
+                continue
+            raise
+
         updated_contents = _replace_between_markers(
             updated_contents, start_marker, end_marker, section
         )

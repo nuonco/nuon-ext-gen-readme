@@ -166,8 +166,8 @@ Populate your README directly by replacing content between these marker pairs:
 <!-- nuon-docs app-branches-diagram-end -->
 ```
 
-The app-branches section is optional: it is only written when those markers are present and the app has a `branches/`
-directory, so existing READMEs are unaffected.
+Each section is optional and is only written when its marker pair is present. The app-branches section additionally
+requires the app to have a `branches/` directory.
 
 Run it in your app directory:
 
