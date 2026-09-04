@@ -1,6 +1,6 @@
 [project]
 name = "nuon-ext-gen-readme"
-version = "0.3.0"
+version = "0.3.1"
 description = "Generate markdown documentation from Nuon app configuration files"
 readme = "README.md"
 authors = [
